@@ -12,6 +12,7 @@ ENV NODE_ENV=production
 COPY backend/package.json backend/package-lock.json ./
 RUN npm ci --omit=dev
 COPY backend/ ./
+RUN mkdir -p database/migrations database/seeders
 COPY --from=dashboard-build /src/dashboard/dist ./public
 RUN mkdir -p public/uploads
 EXPOSE 8080

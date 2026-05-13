@@ -36,7 +36,9 @@ class MigrationValidation {
                     returnPeriod: Joi.string().required(),
                     date: Joi.alternatives().try(Joi.date(), Joi.string()).optional(),
                     investment_date: Joi.alternatives().try(Joi.date(), Joi.string()).optional(),
-                    assignment_date: Joi.alternatives().try(Joi.date(), Joi.string()).optional()
+                    assignment_date: Joi.alternatives().try(Joi.date(), Joi.string()).optional(),
+                    withdrawal_date: Joi.alternatives().try(Joi.date(), Joi.string()).optional(),
+                    withdrawalDate: Joi.alternatives().try(Joi.date(), Joi.string()).optional()
                 })
             ).default([]),
             sendEmails: Joi.boolean().optional()

@@ -50,7 +50,8 @@ const TEMPLATE_ASSIGNMENTS = [
     returnPeriod: 'annual',
     date: new Date().toISOString().slice(0, 10),
     investment: 10000,
-    withdrawal: 200
+    withdrawal: 200,
+    withdrawal_date: ''
   }
 ]
 
@@ -59,7 +60,7 @@ const TEMPLATE_NOTES = [
   ['1) Keep exact sheet names: users, projects, assignments'],
   ['2) users.email is treated as the unique user key'],
   ['3) assignments must reference users by user_email and projects by project_code'],
-  ['4) assignments: opening investment & withdrawal balances; accrued returns are auto-generated from date (investment anchor), roi, returnPeriod'],
+  ['4) assignments: investment anchor date, roi & returnPeriod create scheduled returns to today as transactions; cumulative return-withdrawals in withdrawal (+ optional withdrawal_date for passbook ordering)'],
   ['5) returnPeriod supports annual, semi-annual, quarterly, testing'],
   ['6) Omit date on an assignment row to anchor accruals at import time'],
   ['7) New users get auto-generated temporary passwords and will be forced to reset on first login']
@@ -206,7 +207,7 @@ const MigrationTabContent = () => {
         <Alert color='info'>
           <div className='fw-bold mb-50'>How this works</div>
           <div>1. Download template and prepare users, projects, assignments.</div>
-          <div>2. Assignment opening balances use investment amount and withdrawals already taken; accrued returns are built from roi, returnPeriod, and the assignment date.</div>
+          <div>2. Each assignment anchors investment on sheet date (or today if omitted), accrues all scheduled returns until import time into the ledger, and records cumulative return-withdrawals on the ledger and as a withdrawal line (optional withdrawal_date).</div>
           <div>3. New users receive temporary passwords by email and must reset on first login.</div>
         </Alert>
 

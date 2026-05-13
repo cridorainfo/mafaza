@@ -505,11 +505,22 @@ class UserLedgerService {
 
     /**
      * Used by migration import: seed baseline investment transaction and rebuild accrued returns until now,
-     * without deleting non-migration cron return rows when purging reruns (see purgeReturnNarrationLike).
+     * then optional opening cumulative return-withdrawals as ledger + withdrawal transaction so passbooks match.
+     * Purges prior [migration]% investment / %(migration bootstrap)% returns / [migration]% withdrawals for this ledger.
      */
-    async migrationBootstrapOpeningBalances({ UserId, ProjectId, investment, ledger, anchorDate, transaction: txn }) {
+    async migrationBootstrapOpeningBalances({
+        UserId,
+        ProjectId,
+        investment,
+        ledger,
+        anchorDate,
+        openingWithdrawal,
+        withdrawalDate,
+        transaction: txn
+    }) {
         const INV = '[migration] opening investment';
         const BOOT = '%(migration bootstrap)%';
+        const WDR = '[migration] opening withdrawal';
 
         await Transaction.destroy({
             where: {
@@ -524,6 +535,10 @@ class UserLedgerService {
                     {
                         type: 'return',
                         narration: { [Op.like]: BOOT }
+                    },
+                    {
+                        type: 'withdrawal',
+                        narration: { [Op.like]: '[migration]%' }
                     }
                 ]
             },
@@ -532,10 +547,47 @@ class UserLedgerService {
 
         const investmentAmount = roundCurrency(Number(investment) || 0);
         const start = new Date(anchorDate);
+        let ledgerRef = ledger;
+
+        const applyOpeningWithdrawal = async () => {
+            const wd = roundCurrency(Number(openingWithdrawal) || 0);
+            let wdMoment;
+            if (withdrawalDate !== undefined && withdrawalDate !== null) {
+                wdMoment = new Date(withdrawalDate);
+            } else {
+                wdMoment = new Date();
+            }
+            if (Number.isNaN(wdMoment.getTime())) {
+                wdMoment = new Date();
+            }
+
+            ledgerRef.withdrawal = toNumber(wd);
+
+            if (wd > 0) {
+                await Transaction.create({
+                    UserId,
+                    ProjectId,
+                    amount: wd,
+                    type: 'withdrawal',
+                    date: wdMoment,
+                    narration: `${WDR} (prior cumulative)`,
+                    status: 'approved'
+                }, { transaction: txn });
+            }
+
+            await ledgerRef.save({ transaction: txn });
+            return ledgerRef;
+        };
+
         if (!Number.isFinite(investmentAmount) || investmentAmount <= 0 || Number.isNaN(start.getTime())) {
             ledger.returns = 0;
             await ledger.save({ transaction: txn });
-            return ledger;
+            ledgerRef = await UserLedger.findOne({
+                where: { UserId, ProjectId },
+                transaction: txn
+            });
+            ledgerRef = ledgerRef || ledger;
+            return await applyOpeningWithdrawal();
         }
 
         await Transaction.create({
@@ -561,11 +613,13 @@ class UserLedgerService {
             }
         );
 
-        const fresh = await UserLedger.findOne({
+        ledgerRef = await UserLedger.findOne({
             where: { UserId, ProjectId },
             transaction: txn
         });
-        return fresh || ledger;
+        ledgerRef = ledgerRef || ledger;
+
+        return await applyOpeningWithdrawal();
     }
 
     async calculateReturns(returnPeriod) {

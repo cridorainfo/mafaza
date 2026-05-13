@@ -49,14 +49,15 @@ class MigrationService {
                     returnPeriod: 'annual',
                     date: new Date().toISOString().slice(0, 10),
                     investment: 10000,
-                    withdrawal: 200
+                    withdrawal: 200,
+                    withdrawal_date: ''
                 }
             ],
             notes: [
                 'Use users.email as unique key.',
                 'Use projects.project_code as unique key inside the file.',
                 'Assignments link user_email + project_code.',
-                'Assignments opening balances: investment and withdrawal only. Returns are regenerated from roi, returnPeriod and date (investment anchor) until import time.',
+                'Assignments: investment anchor date, roi, returnPeriod rebuild scheduled returns until import time as approved transactions (migration bootstrap); cumulative return-withdrawals go in withdrawal + optional withdrawal_date.',
                 'Passwords are auto-generated for newly created users and emailed via ZeptoMail.'
             ]
         };
@@ -301,6 +302,8 @@ class MigrationService {
                         investment: row.investment,
                         ledger: existingAssignment,
                         anchorDate: row.assignmentDate,
+                        openingWithdrawal: row.withdrawal,
+                        withdrawalDate: row.withdrawalDate,
                         transaction
                     });
                     report.assignmentsUpdated += 1;
@@ -320,6 +323,8 @@ class MigrationService {
                         investment: row.investment,
                         ledger: createdLedger,
                         anchorDate: row.assignmentDate,
+                        openingWithdrawal: row.withdrawal,
+                        withdrawalDate: row.withdrawalDate,
                         transaction
                     });
                     report.assignmentsCreated += 1;
@@ -481,6 +486,20 @@ function normalizeAssignmentRow(row = {}, index = 0) {
         errors.push('returnPeriod must be one of: annual, semi-annual, quarterly, testing');
     }
 
+    const withdrawalAnchorRaw =
+        row.withdrawal_date ??
+        row.withdrawalDate ??
+        row.return_withdrawal_date ??
+        '';
+    let withdrawalDate = null;
+    if (withdrawalAnchorRaw !== '' && withdrawalAnchorRaw !== null && typeof withdrawalAnchorRaw !== 'undefined') {
+        withdrawalDate = new Date(withdrawalAnchorRaw);
+        if (Number.isNaN(withdrawalDate.getTime())) {
+            withdrawalDate = null;
+            errors.push('withdrawal_date must be valid when provided');
+        }
+    }
+
     return {
         _rowNumber: index + 2,
         _errors: errors,
@@ -490,7 +509,8 @@ function normalizeAssignmentRow(row = {}, index = 0) {
         investment,
         withdrawal,
         returnPeriod,
-        assignmentDate
+        assignmentDate,
+        withdrawalDate
     };
 }
 
