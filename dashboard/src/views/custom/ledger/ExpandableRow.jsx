@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { Table } from 'reactstrap'
 import { Edit, Eye } from 'react-feather'
 import ChangeRoi from './ChangeRoi'
+import { SafeReceiptLink } from '@components/safe-uploads'
 
 const PASSBOOK_VISIBLE_TYPES = new Set(['investment', 'return', 'withdrawal', 'investment-withdrawal'])
 
@@ -163,7 +164,7 @@ const ExpandableRow = ({ data, triggerRefetch }) => {
                   <td>{entry?.narration || 'Investment'}</td>
                   <td>
                     {receiptLink ? (
-                      <a href={receiptLink} target='_blank' rel='noreferrer'>View Receipt</a>
+                      <SafeReceiptLink href={receiptLink}>View Receipt</SafeReceiptLink>
                     ) : (
                       <span>N/A</span>
                     )}

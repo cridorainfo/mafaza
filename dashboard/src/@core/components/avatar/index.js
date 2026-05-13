@@ -1,5 +1,5 @@
 // ** React Imports
-import { forwardRef } from 'react'
+import { forwardRef, useEffect, useState } from 'react'
 
 // ** Third Party Components
 import Proptypes from 'prop-types'
@@ -30,15 +30,33 @@ const Avatar = forwardRef((props, ref) => {
     ...rest
   } = props
 
+  const [imgError, setImgError] = useState(false)
+
+  useEffect(() => {
+    setImgError(false)
+  }, [img])
+
   // ** Function to extract initials from content
   const getInitials = str => {
+    const t = String(str || '').trim()
+    if (!t) return '?'
     const results = []
-    const wordArray = str.trim().split(' ')
+    const wordArray = t.split(' ')
     wordArray.forEach(e => {
-      results.push(e[0].toUpperCase())
+      if (e[0]) results.push(e[0].toUpperCase())
     })
-    return results.slice(0,2).join('')
+    return results.slice(0, 2).join('') || '?'
   }
+
+  const hasImg =
+    img !== false &&
+    img !== undefined &&
+    img !== null &&
+    String(img).length > 0
+  const showImg = hasImg && !imgError
+  const useInitialsText =
+    Boolean(initials) ||
+    Boolean(imgError && typeof content === 'string' && content.trim())
 
   return (
     <Tag
@@ -50,14 +68,14 @@ const Avatar = forwardRef((props, ref) => {
       ref={ref}
       {...rest}
     >
-      {img === false || img === undefined ? (
+      {!showImg ? (
         <span
           className={classnames('avatar-content', {
             'position-relative': badgeUp
           })}
           style={contentStyles}
         >
-          {initials ? getInitials(content) : content}
+          {useInitialsText ? getInitials(content) : content}
 
           {icon ? icon : null}
           {badgeUp ? (
@@ -75,6 +93,7 @@ const Avatar = forwardRef((props, ref) => {
           alt='avatarImg'
           height={imgHeight && !size ? imgHeight : 32}
           width={imgWidth && !size ? imgWidth : 32}
+          onError={() => setImgError(true)}
         />
       )}
       {status ? (

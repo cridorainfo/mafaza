@@ -4,6 +4,7 @@ import moment from 'moment'
 
 // ** Custom Components
 import { Badge } from 'reactstrap'
+import { SafeReceiptLink } from '@components/safe-uploads'
 
 // ** Icons Imports
 import { User,  MoreVertical, FileText, UserCheck } from 'react-feather'
@@ -59,13 +60,17 @@ export const columns = [
     name: 'User Receipt',
     selector: row => row.receipt,
     cell: row => (row.type !== 'withdrawal' && row.receipt
-      ? <a target='_blank' rel='noreferrer' className='text-underline border-bottom' href={row.receipt}>View Receipt</a>
+      ? <SafeReceiptLink href={row.receipt} className='text-underline border-bottom'>View Receipt</SafeReceiptLink>
       : <span>N/A</span>)
   },
   {
     name: 'Admin Receipt',
     selector: row => row.adminReceipt,
-    cell: row => row.adminReceipt ? <a target='_blank' className='text-underline border-bottom' href={row.adminReceipt}>View Receipt</a> : <span>N/A</span>
+    cell: row => row.adminReceipt ? (
+      <SafeReceiptLink href={row.adminReceipt} className='text-underline border-bottom'>View Receipt</SafeReceiptLink>
+    ) : (
+      <span>N/A</span>
+    )
   },
   {
     name: 'Status',

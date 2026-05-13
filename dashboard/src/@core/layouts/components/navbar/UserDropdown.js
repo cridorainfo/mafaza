@@ -45,7 +45,13 @@ const UserDropdown = () => {
           <span className='user-name fw-bold'>{(userData && userData['name']) || ''}</span>
           <span className='user-status'>{(userData && userData.role) || ''}</span>
         </div>
-        <Avatar img={userAvatar} imgHeight='40' imgWidth='40'/>
+        <Avatar
+          img={userAvatar}
+          initials
+          content={(userData && userData.name) || 'User'}
+          imgHeight='40'
+          imgWidth='40'
+        />
       </DropdownToggle>
       <DropdownMenu end>
         <DropdownItem tag={Link} to='/account-settings'>

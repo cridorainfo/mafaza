@@ -88,7 +88,14 @@ const AccountTabs = ({ data, updateProfile }) => {
         <CardBody className='pb-2'>
           <div className='d-flex mt-2'>
             <div className='me-25'>
-              <img className='rounded me-50' src={avatar} alt='Generic placeholder image' height='100' width='100' />
+              <img
+                className='rounded me-50'
+                src={avatar}
+                alt='Profile'
+                height='100'
+                width='100'
+                onError={() => setAvatar(defaultAvatar)}
+              />
             </div>
             <div className='d-flex align-items-end mt-75 ms-1'>
               <div>

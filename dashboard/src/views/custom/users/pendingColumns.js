@@ -20,6 +20,7 @@ import { UncontrolledDropdown, DropdownToggle, DropdownMenu, DropdownItem } from
 const renderClient = row => {
   return <Avatar
     initials
+    img={row.avatar || false}
     className='me-1'
     color={row.avatarColor || 'light-primary'}
     content={row.name || 'John Doe'}

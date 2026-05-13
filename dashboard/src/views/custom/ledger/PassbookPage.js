@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
 import { Button, Card, CardBody, CardHeader, CardTitle, Table } from 'reactstrap'
+import { SafeReceiptLink } from '@components/safe-uploads'
 
 const PASSBOOK_VISIBLE_TYPES = new Set(['investment', 'return', 'withdrawal', 'investment-withdrawal'])
 
@@ -170,7 +171,7 @@ const PassbookPage = () => {
                       <td>{entry?.narration || 'N/A'}</td>
                       <td>
                         {receiptLink ? (
-                          <a href={receiptLink} target='_blank' rel='noreferrer'>View Receipt</a>
+                          <SafeReceiptLink href={receiptLink}>View Receipt</SafeReceiptLink>
                         ) : (
                           <span>N/A</span>
                         )}

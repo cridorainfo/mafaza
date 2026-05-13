@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 // ** Reactstrap Imports
-import { Card, CardTitle, CardBody, CardText, CardImg, Row, Col, Badge, Button } from 'reactstrap'
+import { Card, CardTitle, CardBody, CardText, Row, Col, Badge, Button } from 'reactstrap'
+import { SafeImage } from '@components/safe-uploads'
 import AssignProject from '../../../components/assign-project'
 import './projects.scss'
+
 const ProjectsList = ({ projects, showTestingLabel = false, isAdmin = false, onEditProject }) => {
   const [assignProject, setAssignProject] = useState(null)
 
@@ -17,13 +19,16 @@ const ProjectsList = ({ projects, showTestingLabel = false, isAdmin = false, onE
           return (
             <Col key={pr.id} lg='4' md='6'>
               <Card>
-                {imageSrc ? (
-                  <CardImg className="project-image" top src={imageSrc} alt='Project cover' />
-                ) : (
-                  <div className='project-image project-image-placeholder d-flex align-items-center justify-content-center'>
-                    No Image
-                  </div>
-                )}
+                <SafeImage
+                  src={imageSrc}
+                  alt='Project cover'
+                  className='card-img-top project-image'
+                  fallback={
+                    <div className='project-image project-image-placeholder d-flex align-items-center justify-content-center'>
+                      No Image
+                    </div>
+                  }
+                />
                 <CardBody>
                   <div className='d-flex align-items-center justify-content-between mb-1'>
                     <CardTitle tag='h4' className='mb-0'>{pr?.name || 'Untitled Project'}</CardTitle>

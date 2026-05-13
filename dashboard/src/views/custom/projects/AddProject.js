@@ -7,6 +7,8 @@ import Sidebar from '@components/sidebar'
 // ** Third Party Components
 import { useForm, Controller } from 'react-hook-form'
 
+import { SafeImage } from '@components/safe-uploads'
+
 // ** Reactstrap Imports
 import { Button, Label, Form, Input } from 'reactstrap'
 
@@ -165,10 +167,19 @@ const AddProjects = ({ open, toggleSidebar, projectToEdit }) => {
           </Label>
           {projectToEdit?.ProjectImages?.[0]?.link ? (
             <div className='mb-50'>
-              <img
+              <SafeImage
                 src={projectToEdit.ProjectImages[0].link}
                 alt='Current project'
-                style={{ width: '100%', maxHeight: '160px', objectFit: 'cover', borderRadius: '6px' }}
+                className='w-100'
+                style={{ maxHeight: '160px', objectFit: 'cover', borderRadius: '6px' }}
+                fallback={
+                  <div
+                    className='w-100 d-flex align-items-center justify-content-center text-muted'
+                    style={{ minHeight: '120px', background: '#f3f5f8', borderRadius: '6px' }}
+                  >
+                    Image unavailable
+                  </div>
+                }
               />
               <small className='text-muted d-block mt-25'>Upload new image(s) to replace current image(s).</small>
             </div>
