@@ -7,6 +7,6 @@ dockerfilePath = "Dockerfile"
 
 [deploy]
 startCommand = "/backup.sh"
-# Daily at 03:00 UTC — edit as needed (Railway cron is UTC).
-cronSchedule = "0 3 * * *"
+# Weekly at 03:00 UTC on Sunday — edit as needed (Railway cron is UTC).
+cronSchedule = "0 3 * * 0"
 restartPolicyType = "NEVER"
