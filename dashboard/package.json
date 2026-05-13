@@ -129,6 +129,10 @@
     "html-to-draftjs": {
       "immutable": "^4.0.0"
     },
+    "react-slidedown": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    },
     "@esbuild-plugins/node-globals-polyfill": {
       "esbuild": "^0.15.15"
     }

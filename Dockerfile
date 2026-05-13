@@ -1,7 +1,7 @@
 # Production image: Vite dashboard (static) + Express API for Railway
 FROM node:20-alpine AS dashboard-build
 WORKDIR /src/dashboard
-COPY dashboard/package.json dashboard/package-lock.json ./
+COPY dashboard/package.json dashboard/package-lock.json dashboard/.npmrc ./
 RUN npm ci
 COPY dashboard/ ./
 RUN npm run build
