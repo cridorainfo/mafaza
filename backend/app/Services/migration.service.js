@@ -9,6 +9,7 @@ const {
     UserSecurity
 } = require('../Models');
 const zeptoMailService = require('./zeptomail.service');
+const userLedgerService = require('./user-ledger.service');
 
 const ALLOWED_USER_ROLES = new Set([Role.Admin, Role.User]);
 const ALLOWED_USER_STATUSES = new Set(['verified', 'inactive', 'pending']);
@@ -48,7 +49,6 @@ class MigrationService {
                     returnPeriod: 'annual',
                     date: new Date().toISOString().slice(0, 10),
                     investment: 10000,
-                    returns: 800,
                     withdrawal: 200
                 }
             ],
@@ -56,7 +56,7 @@ class MigrationService {
                 'Use users.email as unique key.',
                 'Use projects.project_code as unique key inside the file.',
                 'Assignments link user_email + project_code.',
-                'Assignments can include investment, returns, withdrawal opening balances.',
+                'Assignments opening balances: investment and withdrawal only. Returns are regenerated from roi, returnPeriod and date (investment anchor) until import time.',
                 'Passwords are auto-generated for newly created users and emailed via ZeptoMail.'
             ]
         };
@@ -292,20 +292,36 @@ class MigrationService {
                     existingAssignment.roi = row.roi;
                     existingAssignment.returnPeriod = row.returnPeriod;
                     existingAssignment.investment = row.investment;
-                    existingAssignment.returns = row.returns;
                     existingAssignment.withdrawal = row.withdrawal;
+                    existingAssignment.returns = 0;
                     await existingAssignment.save({ transaction });
+                    await userLedgerService.migrationBootstrapOpeningBalances({
+                        UserId: user.id,
+                        ProjectId: project.id,
+                        investment: row.investment,
+                        ledger: existingAssignment,
+                        anchorDate: row.assignmentDate,
+                        transaction
+                    });
                     report.assignmentsUpdated += 1;
                 } else {
-                    await UserLedger.create({
+                    const createdLedger = await UserLedger.create({
                         UserId: user.id,
                         ProjectId: project.id,
                         roi: row.roi,
                         returnPeriod: row.returnPeriod,
                         investment: row.investment,
-                        returns: row.returns,
+                        returns: 0,
                         withdrawal: row.withdrawal
                     }, { transaction });
+                    await userLedgerService.migrationBootstrapOpeningBalances({
+                        UserId: user.id,
+                        ProjectId: project.id,
+                        investment: row.investment,
+                        ledger: createdLedger,
+                        anchorDate: row.assignmentDate,
+                        transaction
+                    });
                     report.assignmentsCreated += 1;
                 }
             }
@@ -431,23 +447,35 @@ function normalizeAssignmentRow(row = {}, index = 0) {
     const investment = row.investment === '' || row.investment === null || typeof row.investment === 'undefined'
         ? 0
         : Number(row.investment);
-    const returns = row.returns === '' || row.returns === null || typeof row.returns === 'undefined'
-        ? 0
-        : Number(row.returns);
     const withdrawal = row.withdrawal === '' || row.withdrawal === null || typeof row.withdrawal === 'undefined'
         ? 0
         : Number(row.withdrawal);
     const returnPeriod = String(row.returnPeriod || '').trim().toLowerCase();
     const errors = [];
 
+    const anchorRaw =
+        row.date ??
+        row.assignment_date ??
+        row.assign_date ??
+        row.investment_date ??
+        '';
+    let assignmentDate;
+    if (anchorRaw === '' || anchorRaw === null || typeof anchorRaw === 'undefined') {
+        assignmentDate = new Date();
+    } else {
+        assignmentDate = new Date(anchorRaw);
+        if (Number.isNaN(assignmentDate.getTime())) {
+            assignmentDate = null;
+            errors.push('date must be valid (investment anchor for accruals)');
+        }
+    }
+
     if (!userEmail) errors.push('user_email is required');
     if (!projectCode) errors.push('project_code is required');
     if (!Number.isFinite(roi)) errors.push('roi must be a number');
     if (!Number.isFinite(investment)) errors.push('investment must be a number');
-    if (!Number.isFinite(returns)) errors.push('returns must be a number');
     if (!Number.isFinite(withdrawal)) errors.push('withdrawal must be a number');
     if (Number.isFinite(investment) && investment < 0) errors.push('investment cannot be negative');
-    if (Number.isFinite(returns) && returns < 0) errors.push('returns cannot be negative');
     if (Number.isFinite(withdrawal) && withdrawal < 0) errors.push('withdrawal cannot be negative');
     if (!ALLOWED_RETURN_PERIODS.has(returnPeriod)) {
         errors.push('returnPeriod must be one of: annual, semi-annual, quarterly, testing');
@@ -460,9 +488,9 @@ function normalizeAssignmentRow(row = {}, index = 0) {
         projectCode,
         roi,
         investment,
-        returns,
         withdrawal,
-        returnPeriod
+        returnPeriod,
+        assignmentDate
     };
 }
 

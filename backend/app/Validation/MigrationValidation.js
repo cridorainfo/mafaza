@@ -32,10 +32,11 @@ class MigrationValidation {
                     project_code: Joi.string().required(),
                     roi: Joi.alternatives().try(Joi.number(), Joi.string()).required(),
                     investment: Joi.alternatives().try(Joi.number(), Joi.string()).optional(),
-                    returns: Joi.alternatives().try(Joi.number(), Joi.string()).optional(),
                     withdrawal: Joi.alternatives().try(Joi.number(), Joi.string()).optional(),
                     returnPeriod: Joi.string().required(),
-                    date: Joi.alternatives().try(Joi.date(), Joi.string()).optional()
+                    date: Joi.alternatives().try(Joi.date(), Joi.string()).optional(),
+                    investment_date: Joi.alternatives().try(Joi.date(), Joi.string()).optional(),
+                    assignment_date: Joi.alternatives().try(Joi.date(), Joi.string()).optional()
                 })
             ).default([]),
             sendEmails: Joi.boolean().optional()

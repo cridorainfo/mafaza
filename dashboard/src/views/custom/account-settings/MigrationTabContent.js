@@ -50,7 +50,6 @@ const TEMPLATE_ASSIGNMENTS = [
     returnPeriod: 'annual',
     date: new Date().toISOString().slice(0, 10),
     investment: 10000,
-    returns: 800,
     withdrawal: 200
   }
 ]
@@ -60,9 +59,10 @@ const TEMPLATE_NOTES = [
   ['1) Keep exact sheet names: users, projects, assignments'],
   ['2) users.email is treated as the unique user key'],
   ['3) assignments must reference users by user_email and projects by project_code'],
-  ['4) assignments can include investment, returns, withdrawal opening balances'],
+  ['4) assignments: opening investment & withdrawal balances; accrued returns are auto-generated from date (investment anchor), roi, returnPeriod'],
   ['5) returnPeriod supports annual, semi-annual, quarterly, testing'],
-  ['6) New users get auto-generated temporary passwords and will be forced to reset on first login']
+  ['6) Omit date on an assignment row to anchor accruals at import time'],
+  ['7) New users get auto-generated temporary passwords and will be forced to reset on first login']
 ]
 
 const normalizeRows = rows =>
@@ -206,7 +206,7 @@ const MigrationTabContent = () => {
         <Alert color='info'>
           <div className='fw-bold mb-50'>How this works</div>
           <div>1. Download template and prepare users, projects, assignments.</div>
-          <div>2. Put opening balances in assignments: investment, returns, withdrawal.</div>
+          <div>2. Assignment opening balances use investment amount and withdrawals already taken; accrued returns are built from roi, returnPeriod, and the assignment date.</div>
           <div>3. New users receive temporary passwords by email and must reset on first login.</div>
         </Alert>
 

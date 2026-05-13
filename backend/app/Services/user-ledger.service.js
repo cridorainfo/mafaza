@@ -377,24 +377,37 @@ class UserLedgerService {
         return userLedger;
     }
 
-    async recalculateFutureReturns(UserId, ProjectId, fromDate, investmentChange, userLedger) {
+    async recalculateFutureReturns(UserId, ProjectId, fromDate, investmentChange, userLedger, options = {}) {
+        const txn = options.transaction;
         const { returnPeriod } = userLedger;
         const fixedDates = RETURN_PAYMENT_DATES[returnPeriod];
+        const returnNarration = typeof options.returnNarration === "string"
+            ? options.returnNarration
+            : `${returnPeriod} return (recalculated)`;
 
         const start = new Date(fromDate);
         if (Number.isNaN(start.getTime())) return;
 
+        const returnDestroyWhere = {
+            UserId,
+            ProjectId,
+            type: "return",
+            status: "approved",
+            date: {
+                [Sequelize.Op.gt]: start
+            }
+        };
+
+        if (options.purgeReturnNarrationLike) {
+            returnDestroyWhere.narration = {
+                [Sequelize.Op.like]: options.purgeReturnNarrationLike
+            };
+        }
+
         if (!fixedDates || !fixedDates.length) {
             await Transaction.destroy({
-                where: {
-                    UserId,
-                    ProjectId,
-                    type: "return",
-                    status: "approved",
-                    date: {
-                        [Sequelize.Op.gt]: start
-                    }
-                }
+                where: returnDestroyWhere,
+                transaction: txn
             });
 
             const now = new Date();
@@ -407,7 +420,7 @@ class UserLedgerService {
                         amount: returnAmount,
                         type: "return",
                         date: new Date(currentDate),
-                        narration: `${returnPeriod} return (recalculated)`,
+                        narration: returnNarration,
                         status: "approved",
                         ProjectId,
                         UserId
@@ -418,7 +431,7 @@ class UserLedgerService {
             }
 
             if (newReturns.length > 0) {
-                await Transaction.bulkCreate(newReturns);
+                await Transaction.bulkCreate(newReturns, { transaction: txn });
             }
 
             const totalReturns = await Transaction.sum("amount", {
@@ -427,24 +440,18 @@ class UserLedgerService {
                     ProjectId,
                     type: "return",
                     status: "approved"
-                }
+                },
+                transaction: txn
             });
             userLedger.returns = toNumber(totalReturns);
-            await userLedger.save();
+            await userLedger.save({ transaction: txn });
             return;
         }
 
-        // Step 1: Delete approved future return transactions
+        // Step 1: Delete matching approved future return transactions (all, or narrowed for migration reruns)
         await Transaction.destroy({
-            where: {
-                UserId,
-                ProjectId,
-                type: "return",
-                status: "approved",
-                date: {
-                    [Sequelize.Op.gt]: start
-                }
-            }
+            where: returnDestroyWhere,
+            transaction: txn
         });
 
         // Step 2: Regenerate approved returns at each payout boundary until now
@@ -461,7 +468,8 @@ class UserLedgerService {
                 ProjectId,
                 roi: userLedger.roi,
                 periodStart,
-                periodEnd
+                periodEnd,
+                transaction: txn
             });
 
             if (returnAmount <= 0) continue;
@@ -470,7 +478,7 @@ class UserLedgerService {
                 amount: returnAmount,
                 type: "return",
                 date: new Date(periodEnd),
-                narration: `${returnPeriod} return (recalculated)`,
+                narration: returnNarration,
                 status: "approved",
                 ProjectId,
                 UserId
@@ -478,7 +486,7 @@ class UserLedgerService {
         }
 
         if (newReturns.length > 0) {
-            await Transaction.bulkCreate(newReturns);
+            await Transaction.bulkCreate(newReturns, { transaction: txn });
         }
 
         // Step 3: Sync ledger return balance with approved return transactions
@@ -488,10 +496,76 @@ class UserLedgerService {
                 ProjectId,
                 type: "return",
                 status: "approved"
-            }
+            },
+            transaction: txn
         });
         userLedger.returns = toNumber(totalReturns);
-        await userLedger.save();
+        await userLedger.save({ transaction: txn });
+    }
+
+    /**
+     * Used by migration import: seed baseline investment transaction and rebuild accrued returns until now,
+     * without deleting non-migration cron return rows when purging reruns (see purgeReturnNarrationLike).
+     */
+    async migrationBootstrapOpeningBalances({ UserId, ProjectId, investment, ledger, anchorDate, transaction: txn }) {
+        const INV = '[migration] opening investment';
+        const BOOT = '%(migration bootstrap)%';
+
+        await Transaction.destroy({
+            where: {
+                UserId,
+                ProjectId,
+                status: 'approved',
+                [Op.or]: [
+                    {
+                        type: 'investment',
+                        narration: { [Op.like]: '[migration]%' }
+                    },
+                    {
+                        type: 'return',
+                        narration: { [Op.like]: BOOT }
+                    }
+                ]
+            },
+            transaction: txn
+        });
+
+        const investmentAmount = roundCurrency(Number(investment) || 0);
+        const start = new Date(anchorDate);
+        if (!Number.isFinite(investmentAmount) || investmentAmount <= 0 || Number.isNaN(start.getTime())) {
+            ledger.returns = 0;
+            await ledger.save({ transaction: txn });
+            return ledger;
+        }
+
+        await Transaction.create({
+            UserId,
+            ProjectId,
+            amount: investmentAmount,
+            type: 'investment',
+            date: start,
+            narration: INV,
+            status: 'approved'
+        }, { transaction: txn });
+
+        await this.recalculateFutureReturns(
+            UserId,
+            ProjectId,
+            start,
+            investmentAmount,
+            ledger,
+            {
+                transaction: txn,
+                purgeReturnNarrationLike: BOOT,
+                returnNarration: `${ledger.returnPeriod} return (migration bootstrap)`
+            }
+        );
+
+        const fresh = await UserLedger.findOne({
+            where: { UserId, ProjectId },
+            transaction: txn
+        });
+        return fresh || ledger;
     }
 
     async calculateReturns(returnPeriod) {
@@ -584,7 +658,7 @@ class UserLedgerService {
         console.log("Return successfully added!");
     }
 
-    async calculateProratedReturnAmount({ UserId, ProjectId, roi, periodStart, periodEnd }) {
+    async calculateProratedReturnAmount({ UserId, ProjectId, roi, periodStart, periodEnd, transaction: txn }) {
         const roiValue = toNumber(roi);
         if (roiValue <= 0) return 0;
 
@@ -604,7 +678,8 @@ class UserLedgerService {
             },
             attributes: ["type", "amount", "date"],
             order: [["date", "ASC"], ["id", "ASC"]],
-            raw: true
+            raw: true,
+            transaction: txn
         });
 
         let principal = 0;
