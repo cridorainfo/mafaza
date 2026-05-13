@@ -1,0 +1,11 @@
+.git
+.gitignore
+**/.env
+**/.env.*
+!**/.env.example
+**/node_modules
+**/dist
+**/build
+backend/public/uploads
+*.xlsx
+docker-compose.override.yml

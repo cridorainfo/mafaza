@@ -1,0 +1,122 @@
+Admin dashboard is the same frontend app:
+
+  - Login page: http://localhost:3001/login
+  - Admin home: http://localhost:3001/dashboard
+  - User approval screen: http://localhost:3001/users (Pending Users table with Approve/Reject)
+
+
+   Right now there is no verified admin yet, so nobody can reach /users to approve others.
+  If you want, I can immediately mark your account as verified admin in DB so you can log in and approve users from the
+  UI.
+
+
+
+   Run Manually (Dev mode)
+
+  1. Backend terminal:
+
+  cd C:\Users\Sreejith\Desktop\lagari\mafaza-master\backend
+  npm install
+  # if .env is missing:
+  # Copy-Item .env.example .env
+
+  npm run db:create
+  npm run db:migrate
+  npm run db:seed   # optional but usually needed for starter data
+  npm run start:dev
+
+  2. Frontend terminal:
+
+  cd C:\Users\Sreejith\Desktop\lagari\mafaza-master\dashboard
+  npm install
+  npm start
+
+  3. URLs:
+
+  - Frontend: http://localhost:3001
+  - Backend API: http://localhost:3000/api
+
+  Important notes:
+
+  - Frontend Vite proxy is hardcoded to backend http://localhost:3000 (dashboard/vite.config.js (C:/Users/Sreejith/
+    Desktop/lagari/mafaza-master/dashboard/vite.config.js:16)).
+  - Backend in development always listens on 3000 (ignores APP_PORT unless production) (backend/server.js (C:/Users/
+    Sreejith/Desktop/lagari/mafaza-master/backend/server.js:30)).
+  - Backend DB/env settings come from backend/.env (backend/.env (C:/Users/Sreejith/Desktop/lagari/mafaza-master/
+    backend/.env:6)).
+
+
+
+    notes
+
+   Important: new users default to status = pending
+
+
+   Stack
+
+   Backend: Node.js + Express + Sequelize + Postgres
+   Frontend: React + Vite
+
+
+   To create an Admin
+   npm run create-admin
+
+
+   Admin name: Admin Sarath
+Admin email: sarath@gmail.com
+Admin password (min 6 chars): sarath@455
+Created verified admin user: sarath@gmail.com
+
+
+
+
+Here’s where we are:
+
+  - Nginx site mafasa.efuturex.com is enabled.
+  - Frontend build now succeeds; dashboard/dist is produced.
+  - API service is installed as mafaza-api, but it’s failing to start because Postgres auth is failing:
+      - password authentication failed for user "postgres"
+  - The mafaza database does not exist yet.
+
+  To finish hosting, I need to fix the DB credentials and initialize the database.
+  Do you want me to:
+
+  1. Set the Postgres password for user postgres to match DB_PASSWORD in /srv/mafaza/.env, create the mafaza
+     database, run migrations (and seeds if you want), then restart the API?
+
+
+
+
+Admin name: Mafaza Admin
+Admin email: mafaza@gmail.com
+Admin password (min 6 chars): sarath@455
+Created verified admin user: mafaza@gmail.com
+
+
+
+
+
+• Current behavior in your app is:
+
+  1. ROI is treated as a yearly percentage.
+  2. returnPeriod decides how often that yearly return is paid out.
+  3. Each payout = (investment * ROI%) / period_divisor.
+
+  So yes, it is the second one you said: yearly ROI, then split by selected processing period.
+
+  Period divisors now:
+
+  - annual: divide by 1 (full yearly return once per year)
+  - semi-annual: divide by 2
+  - quarterly: divide by 4
+  - testing: divide by 365*8 (every 3 hours)
+
+  Example (investment=10000, ROI=12%):
+
+  - Yearly return = 1200
+  - Quarterly payout = 300 each run
+  - Semi-annual payout = 600 each run
+  - Annual payout = 1200 each run
+  - Testing payout = 1200/2920 ≈ 0.41 every 3 hours
+
+  Also important: payouts are triggered by global cron schedule, not strictly per-user assignment anniversary.

@@ -1,0 +1,28 @@
+.project-image{
+    max-height: 178px !important;
+    object-fit: cover;
+}
+
+.project-image-placeholder{
+    min-height: 178px;
+    background: #f3f5f8;
+    color: #6c757d;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.project-users-table tbody tr {
+    transition: background-color 0.16s ease;
+}
+
+.project-users-table.table-hover > tbody > tr:hover > td,
+.project-users-table.table-hover > tbody > tr:hover > th {
+    background-color: #e9ecef !important;
+    --bs-table-accent-bg: #e9ecef !important;
+}
+
+.dark-layout .project-users-table.table-hover > tbody > tr:hover > td,
+.dark-layout .project-users-table.table-hover > tbody > tr:hover > th {
+    background-color: #313a52 !important;
+    --bs-table-accent-bg: #313a52 !important;
+}
