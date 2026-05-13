@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300" role="img" aria-label="Error">
+  <rect width="400" height="300" fill="#283046"/>
+  <circle cx="200" cy="120" r="48" fill="none" stroke="#ea5455" stroke-width="8"/>
+  <path stroke="#ea5455" stroke-width="8" stroke-linecap="round" d="M172 92l56 56M228 92l-56 56"/>
+  <text x="200" y="270" text-anchor="middle" fill="#b4b7bd" font-family="system-ui,sans-serif" font-size="14">Something went wrong</text>
+</svg>

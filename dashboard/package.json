@@ -2,6 +2,7 @@
   "name": "mafaza",
   "version": "9.0.0",
   "private": true,
+  "description": "Mafaza — client dashboard (investment tracking)",
   "dependencies": {
     "@casl/ability": "^6.3.2",
     "@casl/react": "^3.1.0",
@@ -43,10 +44,10 @@
     "moment": "^2.29.3",
     "nouislider": "^15.5.0",
     "nouislider-react": "^3.4.1",
-    "postcss": "7.0.33",
+    "postcss": "^8.4.49",
     "postcss-custom-properties": "^12.1.10",
-    "postcss-import": "12.0.0",
-    "postcss-rtl": "^1.5.0",
+    "postcss-import": "^15.1.0",
+    "postcss-rtl": "^2.0.0",
     "prismjs": "^1.28.0",
     "process": "^0.11.10",
     "rc-input-number": "^7.3.11",
@@ -108,7 +109,6 @@
     "styled-components/react-is": "^16.8.0",
     "react-hot-toast/goober/csstype": "^3.0.10",
     "html-to-draftjs/immutable": "^4.0.0",
-    "postcss-custom-properties/postcss": "^8.2",
     "@esbuild-plugins/node-globals-polyfill/esbuild": "^0.15.15"
   },
   "overrides": {
@@ -128,9 +128,6 @@
     },
     "html-to-draftjs": {
       "immutable": "^4.0.0"
-    },
-    "postcss-custom-properties": {
-      "postcss": "^8.2"
     },
     "@esbuild-plugins/node-globals-polyfill": {
       "esbuild": "^0.15.15"

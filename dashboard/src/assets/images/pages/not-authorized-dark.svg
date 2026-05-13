@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300" role="img" aria-label="Not authorized">
+  <rect width="400" height="300" fill="#283046"/>
+  <path fill="#7367f0" d="M200 60c-35 0-64 29-64 64v32H96v96h208v-96h-40v-32c0-35-29-64-64-64zm0 32c18 0 32 14 32 32v32h-64v-32c0-18 14-32 32-32z"/>
+  <text x="200" y="270" text-anchor="middle" fill="#b4b7bd" font-family="system-ui,sans-serif" font-size="14">Not authorized</text>
+</svg>

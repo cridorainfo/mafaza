@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300" role="img" aria-label="Coming soon">
+  <rect width="400" height="300" fill="#283046"/>
+  <path fill="#00cfe8" d="M200 72l-8 16h-18l14 12-6 18 18-12 18 12-6-18 14-12h-18z"/>
+  <text x="200" y="200" text-anchor="middle" fill="#b4b7bd" font-family="system-ui,sans-serif" font-size="20" font-weight="600">Coming soon</text>
+  <text x="200" y="270" text-anchor="middle" fill="#b4b7bd" font-family="system-ui,sans-serif" font-size="14">We are preparing something great</text>
+</svg>
