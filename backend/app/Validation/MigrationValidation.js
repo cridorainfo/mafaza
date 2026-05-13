@@ -1,6 +1,21 @@
 const Joi = require('joi');
 const validateRequest = require('../Middleware/ValidateRequest');
 
+function coerceExcelTextField() {
+    return Joi.any()
+        .optional()
+        .allow(null, '')
+        .custom((value) => {
+            if (value === null || value === undefined || value === '') {
+                return '';
+            }
+            if (typeof value === 'number' && !Number.isFinite(value)) {
+                return '';
+            }
+            return String(value);
+        });
+}
+
 class MigrationValidation {
     async importSchema(req, res, next) {
         const schema = Joi.object({
@@ -8,9 +23,9 @@ class MigrationValidation {
                 Joi.object({
                     email: Joi.string().email().required(),
                     name: Joi.string().required(),
-                    phoneNumber: Joi.string().allow('', null).optional(),
-                    address: Joi.string().allow('', null).optional(),
-                    country: Joi.string().allow('', null).optional(),
+                    phoneNumber: coerceExcelTextField(),
+                    address: coerceExcelTextField(),
+                    country: coerceExcelTextField(),
                     role: Joi.string().allow('', null).optional(),
                     status: Joi.string().allow('', null).optional()
                 })
