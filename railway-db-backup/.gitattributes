@@ -1,0 +1,2 @@
+# Ensure bash scripts run in Linux containers (Railway/Docker)
+backup.sh text eol=lf

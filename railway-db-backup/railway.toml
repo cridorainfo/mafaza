@@ -1,0 +1,12 @@
+# Config as code for this service only. Set the service Root Directory to `railway-db-backup` in Railway.
+# Dashboard overrides: code wins over UI — adjust schedule here or remove cronSchedule to use Settings → Cron Schedule.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "/backup.sh"
+# Daily at 03:00 UTC — edit as needed (Railway cron is UTC).
+cronSchedule = "0 3 * * *"
+restartPolicyType = "NEVER"
