@@ -445,6 +445,47 @@ function normalizeProjectRow(row = {}, index = 0) {
     };
 }
 
+/** Serial range for Windows Excel 1900 date system (~1954–2078). Outside this, numbers are treated as JS timestamps. */
+const EXCEL_SERIAL_MIN = 20000;
+const EXCEL_SERIAL_MAX = 65000;
+
+/** Windows Excel 1900 date system → UTC (fractional serial preserves time-of-day). */
+function excelSerialToUtcDate(serial) {
+    const MS_PER_DAY = 86400000;
+    const ms = Math.round((serial - 25569) * MS_PER_DAY);
+    return new Date(ms);
+}
+
+/** Excel stores date cells as serial days, not unix ms; sheet_to_json often yields a number. */
+function parseMigrationSheetDate(raw) {
+    if (raw === '' || raw === null || typeof raw === 'undefined') {
+        return { date: null, ok: false };
+    }
+    if (raw instanceof Date) {
+        return Number.isNaN(raw.getTime()) ? { date: null, ok: false } : { date: raw, ok: true };
+    }
+    if (typeof raw === 'number' && Number.isFinite(raw)) {
+        if (raw >= EXCEL_SERIAL_MIN && raw <= EXCEL_SERIAL_MAX) {
+            const fromSerial = excelSerialToUtcDate(raw);
+            return Number.isNaN(fromSerial.getTime()) ? { date: null, ok: false } : { date: fromSerial, ok: true };
+        }
+        const d = new Date(raw);
+        return Number.isNaN(d.getTime()) ? { date: null, ok: false } : { date: d, ok: true };
+    }
+    const trimmed = String(raw).trim();
+    if (trimmed === '') {
+        return { date: null, ok: false };
+    }
+    if (!trimmed.includes('/') && !trimmed.includes('-') && !trimmed.includes('T')) {
+        const n = Number(trimmed);
+        if (Number.isFinite(n)) {
+            return parseMigrationSheetDate(n);
+        }
+    }
+    const d = new Date(trimmed);
+    return Number.isNaN(d.getTime()) ? { date: null, ok: false } : { date: d, ok: true };
+}
+
 function normalizeAssignmentRow(row = {}, index = 0) {
     const userEmail = String(row.user_email || row.userEmail || '').trim().toLowerCase();
     const projectCode = String(row.project_code || row.projectCode || '').trim().toUpperCase();
@@ -468,9 +509,9 @@ function normalizeAssignmentRow(row = {}, index = 0) {
     if (anchorRaw === '' || anchorRaw === null || typeof anchorRaw === 'undefined') {
         assignmentDate = new Date();
     } else {
-        assignmentDate = new Date(anchorRaw);
-        if (Number.isNaN(assignmentDate.getTime())) {
-            assignmentDate = null;
+        const parsed = parseMigrationSheetDate(anchorRaw);
+        assignmentDate = parsed.ok ? parsed.date : null;
+        if (!parsed.ok || assignmentDate === null) {
             errors.push('date must be valid (investment anchor for accruals)');
         }
     }
@@ -493,8 +534,10 @@ function normalizeAssignmentRow(row = {}, index = 0) {
         '';
     let withdrawalDate = null;
     if (withdrawalAnchorRaw !== '' && withdrawalAnchorRaw !== null && typeof withdrawalAnchorRaw !== 'undefined') {
-        withdrawalDate = new Date(withdrawalAnchorRaw);
-        if (Number.isNaN(withdrawalDate.getTime())) {
+        const wdParsed = parseMigrationSheetDate(withdrawalAnchorRaw);
+        if (wdParsed.ok && wdParsed.date) {
+            withdrawalDate = wdParsed.date;
+        } else {
             withdrawalDate = null;
             errors.push('withdrawal_date must be valid when provided');
         }

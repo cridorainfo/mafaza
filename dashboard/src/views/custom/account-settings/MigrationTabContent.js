@@ -78,7 +78,9 @@ const normalizeRows = rows =>
 const getSheetRows = (workbook, sheetName) => {
   const match = workbook.SheetNames.find(name => name.toLowerCase() === sheetName.toLowerCase())
   if (!match) return []
-  return normalizeRows(XLSX.utils.sheet_to_json(workbook.Sheets[match], { defval: '' }))
+  return normalizeRows(
+    XLSX.utils.sheet_to_json(workbook.Sheets[match], { defval: '', cellDates: true })
+  )
 }
 
 const buildWorkbookDownload = (sheetMap, fileName) => {
