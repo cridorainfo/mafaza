@@ -9,6 +9,15 @@ function parseAllowedOrigins() {
   const fromEnv = (process.env.CORS_ORIGINS || '')
     .split(',')
     .map((s) => s.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      try {
+        const u = new URL(entry);
+        return `${u.protocol}//${u.host}`;
+      } catch {
+        return null;
+      }
+    })
     .filter(Boolean);
   if (fromEnv.length > 0) {
     return fromEnv;
@@ -41,6 +50,12 @@ function corsOptions() {
       if (allowed.includes(origin)) {
         return callback(null, true);
       }
+      console.error(
+        '[mafaza-api] CORS rejected request. Origin:',
+        origin,
+        '| Allowed:',
+        allowed.length ? allowed.join(', ') : '(none — set APP_URL or CORS_ORIGINS to your site URL, e.g. https://your-service.up.railway.app)'
+      );
       return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,

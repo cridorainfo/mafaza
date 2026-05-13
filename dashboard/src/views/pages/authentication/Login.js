@@ -99,9 +99,14 @@ const Login = () => {
           ))
         })
         .catch(err => {
+          const apiMessage = err?.response?.data?.message
+          const fallback =
+            err?.code === 'ERR_NETWORK' || err?.message === 'Network Error'
+              ? 'Cannot reach the server. If production: set Railway APP_URL (or CORS_ORIGINS) to match this page’s URL exactly, including https.'
+              : 'An error has occured, please try again!'
           setError('email', {
             type: 'manual',
-            message: err?.response?.data?.message || "An error has occured, please try again!" 
+            message: apiMessage || fallback
           })
         })
     } else {
@@ -129,13 +134,15 @@ const Login = () => {
       <div className='auth-inner my-2'>
         <Card className='mb-0'>
           <CardBody>
-            <Link className='brand-logo' to='/' onClick={e => e.preventDefault()}>
-              <h2 className='brand-text text-primary ms-1'>Mafaza Invetments</h2>
+            <Link className='brand-logo' to='/'>
+              <h2 className='brand-text text-primary ms-1'>Mafaza Investments</h2>
             </Link>
             <CardTitle tag='h4' className='mb-1'>
               Welcome to Mafaza Investment LLC! 👋
             </CardTitle>
-            <CardText className='mb-2'>Please sign-in to your with your credentials to view your invetment-related data.</CardText>
+            <CardText className='mb-2'>
+              Please sign in with your credentials to view your investment-related data.
+            </CardText>
             <Form className='auth-login-form mt-2' onSubmit={handleSubmit(onSubmit)}>
               <div className='mb-1'>
                 <Label className='form-label' for='login-email'>
@@ -183,6 +190,9 @@ const Login = () => {
               </div>
               <Button color='primary' block>
                 Sign in
+              </Button>
+              <Button tag={Link} to='/' color='secondary' outline block className='mt-1'>
+                Back to home
               </Button>
               <p className='text-center mt-2'>
               <span className='me-25'>Don't have an account?</span>

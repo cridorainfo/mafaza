@@ -57,7 +57,6 @@ const Register = () => {
       useJwt
         .register(data)
         .then(res => {
-          console.log("here2")
           toast.success(res.data.message, { id: toastId })
         })
         .catch(err => {
@@ -170,6 +169,9 @@ const Register = () => {
               </div>
               <Button type='submit' block color='primary'>
                 Sign up
+              </Button>
+              <Button tag={Link} to='/' color='secondary' outline block className='mt-1'>
+                Back to home
               </Button>
             </Form>
             <p className='text-center mt-2'>
