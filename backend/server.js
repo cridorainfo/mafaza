@@ -1,5 +1,6 @@
 ﻿require('rootpath')();
 require('dotenv/config');
+require('./config/validate-env').assertRequiredEnv();
 const fs = require('fs');
 const path = require('path');
 const helmet = require('helmet');
