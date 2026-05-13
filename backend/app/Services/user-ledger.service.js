@@ -26,7 +26,6 @@ const RETURN_PAYMENT_DATES = {
 };
 const INVESTMENT_TRANSACTION_TYPES = ["investment", "investment-withdrawal"];
 const PAYOUT_OFFSET_MS = 4 * 60 * 60 * 1000; // Asia/Dubai (UTC+04:00)
-const MS_IN_YEAR = 365 * 24 * 60 * 60 * 1000;
 
 class UserLedgerService {
     async getAll({
@@ -962,10 +961,25 @@ function createPayoutDate(year, month, day, hour = 0, minute = 0, second = 0, mi
 }
 
 function calculateSegmentReturn(principal, annualRoi, startDate, endDate) {
-    const durationMs = new Date(endDate).getTime() - new Date(startDate).getTime();
-    if (durationMs <= 0 || principal <= 0 || annualRoi <= 0) return 0;
+    if (principal <= 0 || annualRoi <= 0) return 0;
 
-    return principal * (annualRoi / 100) * (durationMs / MS_IN_YEAR);
+    // For fixed payout periods, treat dates as whole payout-calendar days.
+    const startDay = normalizeToPayoutDayStart(startDate);
+    const endDay = normalizeToPayoutDayStart(endDate);
+    if (!startDay || !endDay) return 0;
+
+    const durationDays = Math.round((endDay.getTime() - startDay.getTime()) / (24 * 60 * 60 * 1000));
+    if (durationDays <= 0) return 0;
+
+    return principal * (annualRoi / 100) * (durationDays / 365);
+}
+
+function normalizeToPayoutDayStart(dateLike) {
+    const date = new Date(dateLike);
+    if (Number.isNaN(date.getTime())) return null;
+
+    const { year, month, day } = getPayoutDateParts(date);
+    return createPayoutDate(year, month, day);
 }
 
 function getInvestmentDelta(transaction) {
