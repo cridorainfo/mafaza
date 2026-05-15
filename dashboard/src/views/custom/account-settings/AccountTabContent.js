@@ -12,7 +12,7 @@ import defaultAvatar from '@src/assets/images/default.webp'
 import { Row, Col, Form, Card, Input, Label, Button, CardBody, CardTitle, CardHeader, FormFeedback } from 'reactstrap'
 
 // ** Utils
-import { getTestingModeEnabled, selectThemeColors, setTestingModeEnabled } from '@utils'
+import { selectThemeColors } from '@utils'
 
 const countryOptions = [
   { value: 'United Arab Emirates', label: 'United Arab Emirates' },
@@ -24,7 +24,6 @@ const AccountTabs = ({ data, updateProfile }) => {
 
   const [avatar, setAvatar] = useState(data.avatar ? data.avatar : defaultAvatar)
   const [avatarFile, setAvatarFile] = useState(null)
-  const [testingMode, setTestingMode] = useState(getTestingModeEnabled())
 
   // ** Hooks
   const defaultValues = {
@@ -71,12 +70,6 @@ const AccountTabs = ({ data, updateProfile }) => {
   const handleImgReset = () => {
     setAvatarFile(null)
     setAvatar(defaultAvatar)
-  }
-
-  const handleTestingModeChange = e => {
-    const enabled = e.target.checked
-    setTestingMode(enabled)
-    setTestingModeEnabled(enabled)
   }
 
   return (
@@ -190,22 +183,6 @@ const AccountTabs = ({ data, updateProfile }) => {
                 <Button type='submit' className='me-1' color='primary'>
                   Save changes
                 </Button>
-              </Col>
-              <Col className='mt-2' sm='12'>
-                <div className='d-flex align-items-center justify-content-between border rounded p-1'>
-                  <div>
-                    <Label className='form-label mb-0 fw-bolder' for='testing-mode-toggle'>
-                      Testing Mode
-                    </Label>
-                    <p className='mb-0 text-muted'>Show Testing in Projects and enable a 3-hour return period in Assign Project.</p>
-                  </div>
-                  <Input
-                    id='testing-mode-toggle'
-                    type='switch'
-                    checked={testingMode}
-                    onChange={handleTestingModeChange}
-                  />
-                </div>
               </Col>
             </Row>
           </Form>

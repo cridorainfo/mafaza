@@ -18,6 +18,8 @@ import {
 } from 'reactstrap'
 import { Info } from 'react-feather'
 
+import { getTestingModeEnabled, setTestingModeEnabled } from '@utils'
+
 const TEMPLATE_USERS = [
   {
     email: 'investor@example.com',
@@ -106,11 +108,18 @@ const downloadCredentialsCsv = (csvText, fileName) => {
 }
 
 const MigrationTabContent = () => {
+  const [testingMode, setTestingMode] = useState(getTestingModeEnabled())
   const [selectedFile, setSelectedFile] = useState(null)
   const [importing, setImporting] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [downloadingTemplate, setDownloadingTemplate] = useState(false)
   const [lastImportResult, setLastImportResult] = useState(null)
+
+  const handleTestingModeChange = e => {
+    const enabled = e.target.checked
+    setTestingMode(enabled)
+    setTestingModeEnabled(enabled)
+  }
 
   const selectedFileName = useMemo(() => selectedFile?.name || '', [selectedFile])
 
@@ -206,6 +215,20 @@ const MigrationTabContent = () => {
         <CardTitle tag='h4'>Data Migration</CardTitle>
       </CardHeader>
       <CardBody className='pt-2'>
+        <div className='d-flex align-items-center justify-content-between border rounded p-1 mb-2'>
+          <div>
+            <Label className='form-label mb-0 fw-bolder' for='admin-testing-mode-toggle'>
+              Testing Mode
+            </Label>
+            <p className='mb-0 text-muted'>Show Testing in Projects and enable a 3-hour return period in Assign Project.</p>
+          </div>
+          <Input
+            id='admin-testing-mode-toggle'
+            type='switch'
+            checked={testingMode}
+            onChange={handleTestingModeChange}
+          />
+        </div>
         <Alert color='info'>
           <div className='fw-bold mb-50'>How this works</div>
           <div>1. Download template and prepare users, projects, assignments.</div>
