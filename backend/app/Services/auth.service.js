@@ -65,8 +65,8 @@ class AuthService {
         if (user.status !== 'verified') {
             throw `
             Please contact admin to get verified.
-            Email: md@fazzaventures.com
-            Phone: +971507021102
+            Email: mafazainvst@gmail.com
+            Phone: +971545171799
         `;
         }
 
