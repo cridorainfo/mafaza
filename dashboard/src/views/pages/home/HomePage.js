@@ -140,7 +140,7 @@ const HomePage = () => {
     <div id='home-page' className='mafaza-landing'>
       <nav className='landing-nav'>
         <div className='landing-nav-inner'>
-          <a className='brand-logo' href='/landing'>
+          <a className='brand-logo' href='/'>
             <img src={logo} alt='Mafaza logo' />
           </a>
 

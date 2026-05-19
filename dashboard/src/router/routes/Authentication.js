@@ -1,5 +1,6 @@
 // ** React Imports
 import { lazy } from 'react'
+import { Navigate } from 'react-router-dom'
 import ComingSoon from '../../views/pages/misc/ComingSoon'
 import HomePage from '../../views/pages/home/HomePage'
 
@@ -10,12 +11,20 @@ const ResetPassword = lazy(() => import('../../views/pages/authentication/ResetP
 
 const AuthenticationRoutes = [
   {
-    path: '/landing',
+    path: '/',
     element: <HomePage />,
     meta: {
       layout: 'blank',
       publicRoute: true,
       restricted: true
+    }
+  },
+  {
+    path: '/landing',
+    element: <Navigate to='/' replace />,
+    meta: {
+      layout: 'blank',
+      publicRoute: true
     }
   },
   {
