@@ -11,7 +11,7 @@ const ResetPassword = lazy(() => import('../../views/pages/authentication/ResetP
 
 const AuthenticationRoutes = [
   {
-    path: '/',
+    index: true,
     element: <HomePage />,
     meta: {
       layout: 'blank',

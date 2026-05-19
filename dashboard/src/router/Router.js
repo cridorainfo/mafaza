@@ -30,12 +30,12 @@ const Router = () => {
       element: <BlankLayout />,
       children: [{ path: '/auth/not-auth', element: <NotAuthorized /> }]
     },
+    ...allRoutes,
     {
       path: '*',
       element: <BlankLayout />,
       children: [{ path: '*', element: <Error /> }]
-    },
-    ...allRoutes
+    }
   ])
 
   return routes
