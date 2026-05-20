@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-# Exits after one dump + upload (required for Railway Cron jobs).
-# Secrets: DATABASE_URL (from linked Railway Postgres), RCLONE_CONFIG_B64 or RCLONE_CONFIG.
+# One-shot backup for Railway Cron: Postgres dump (ledgers, users, etc.) + uploads to Google Drive.
+# Secrets: DATABASE_URL, RCLONE_CONFIG_B64 or RCLONE_CONFIG, APP_URL (for /uploads files).
 
 if [[ -z "${DATABASE_URL:-}" ]]; then
   echo "backup.sh: DATABASE_URL is required" >&2
@@ -27,7 +27,7 @@ REMOTE="${RCLONE_REMOTE:-gdrive:}"
 STAMP="$(date -u +%Y%m%d_%H%M%SZ)"
 DUMP="/tmp/mafaza-db-${STAMP}.sql.gz"
 
-echo "backup.sh: pg_dump -> ${DUMP}"
+echo "backup.sh: pg_dump (includes Users, UserLedgers, Projects, Transactions, ...) -> ${DUMP}"
 set +e
 pg_dump --no-owner --no-acl "$DATABASE_URL" | gzip -9c >"$DUMP"
 PG_DUMP_STATUS="${PIPESTATUS[0]}"
@@ -44,9 +44,79 @@ if [[ ! -s "$DUMP" ]]; then
   exit 1
 fi
 
-echo "backup.sh: rclone copy -> ${REMOTE}"
+echo "backup.sh: rclone copy database -> ${REMOTE}"
 rclone --config "$RCLONE_CFG" copy "$DUMP" "$REMOTE" \
   --transfers 1 --checkers 2 --retries 5 --low-level-retries 10 -v
-
 rm -f "$DUMP"
+
+backup_uploads() {
+  local uploads_tmp="/tmp/mafaza-uploads-${STAMP}"
+  mkdir -p "$uploads_tmp"
+  local fetched=0
+
+  if [[ -n "${UPLOADS_DIR:-}" && -d "${UPLOADS_DIR}" ]]; then
+    echo "backup.sh: mirroring UPLOADS_DIR=${UPLOADS_DIR}"
+    shopt -s nullglob
+    for f in "${UPLOADS_DIR}"/*; do
+      [[ -f "$f" ]] || continue
+      cp -f "$f" "${uploads_tmp}/$(basename "$f")"
+      fetched=$((fetched + 1))
+    done
+    shopt -u nullglob
+  fi
+
+  local app_url="${APP_URL:-}"
+  app_url="${app_url#APP_URL=}"
+  app_url="${app_url%/}"
+
+  if [[ -n "$app_url" ]]; then
+    echo "backup.sh: fetching /uploads files from ${app_url}"
+    while IFS= read -r path; do
+      [[ -z "$path" ]] && continue
+      [[ "$path" != /* ]] && path="/${path}"
+      local base
+      base="$(basename "$path")"
+      local dest="${uploads_tmp}/${base}"
+      if [[ -f "$dest" ]]; then
+        continue
+      fi
+      if curl -fsSL --max-time 120 -o "$dest" "${app_url}${path}"; then
+        fetched=$((fetched + 1))
+        echo "backup.sh: saved ${base}"
+      else
+        echo "backup.sh: warning: failed to fetch ${app_url}${path}" >&2
+      fi
+    done < <(psql "$DATABASE_URL" -t -A -c "
+      SELECT DISTINCT path FROM (
+        SELECT link AS path FROM \"ProjectImages\" WHERE link IS NOT NULL AND trim(link) <> ''
+        UNION
+        SELECT receipt AS path FROM \"Transactions\" WHERE receipt IS NOT NULL AND trim(receipt) <> ''
+        UNION
+        SELECT \"adminReceipt\" AS path FROM \"Transactions\" WHERE \"adminReceipt\" IS NOT NULL AND trim(\"adminReceipt\") <> ''
+        UNION
+        SELECT avatar AS path FROM \"Users\" WHERE avatar IS NOT NULL AND trim(avatar) <> ''
+      ) t;
+    ")
+  else
+    echo "backup.sh: APP_URL not set; skipping HTTP upload fetch (set APP_URL=https://app.mafazainvestment.com)" >&2
+  fi
+
+  if [[ "$fetched" -eq 0 ]]; then
+    echo "backup.sh: no upload files collected"
+    rm -rf "$uploads_tmp"
+    return 0
+  fi
+
+  local remote_dated="${REMOTE}mafaza-uploads/${STAMP}/"
+  local remote_latest="${REMOTE}mafaza-uploads/latest/"
+  echo "backup.sh: rclone copy ${fetched} file(s) -> ${remote_dated}"
+  rclone --config "$RCLONE_CFG" copy "$uploads_tmp" "$remote_dated" \
+    --transfers 2 --checkers 4 --retries 5 --low-level-retries 10 -v
+  echo "backup.sh: rclone copy uploads -> ${remote_latest}"
+  rclone --config "$RCLONE_CFG" copy "$uploads_tmp" "$remote_latest" \
+    --transfers 2 --checkers 4 --retries 5 --low-level-retries 10 -v
+  rm -rf "$uploads_tmp"
+}
+
+backup_uploads
 echo "backup.sh: done"

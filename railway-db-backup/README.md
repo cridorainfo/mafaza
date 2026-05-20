@@ -1,26 +1,48 @@
-# Railway Postgres → Google Drive backup
+# Railway Postgres + uploads → Google Drive backup
 
-Docker image that runs **`pg_dump | gzip`** once and **`rclone copy`** into Drive, then **exits** (required by [Railway Cron](https://docs.railway.com/cron-jobs)).
+Docker image for [Railway Cron](https://docs.railway.com/cron-jobs): runs once, then exits.
+
+Each run uploads:
+
+1. **Database** — `pg_dump | gzip` → `mafaza-db-YYYYMMDD_HHMMSSZ.sql.gz`  
+   Includes **all tables**: `Users`, **`UserLedgers`**, `Projects`, `Transactions`, `ProjectImages`, etc.
+
+2. **Uploads (images & receipts)** — files under `/uploads` → `mafaza-uploads/YYYYMMDD_HHMMSSZ/` and `mafaza-uploads/latest/`  
+   Paths are read from the database, then downloaded from your public app URL.
 
 ## Railway setup
 
-1. **New service** → deploy this repo → set **Root Directory** to `railway-db-backup`.
+1. **Service** → deploy this repo → **Root Directory** `railway-db-backup`.
 2. **Variables**
-   - **`DATABASE_URL`**: reference the variable from your **Railway Postgres** service (same project; internal URL is fine).
-   - **`RCLONE_CONFIG_B64`**: base64 of your local `%APPDATA%\rclone\rclone.conf` (single line). PowerShell:
+   - **`DATABASE_URL`** — reference **Postgres-AFWD** (or your active Postgres) internal URL.
+   - **`APP_URL`** — public site origin, e.g. `https://app.mafazainvestment.com` (no trailing slash; do not prefix with `APP_URL=`).
+   - **`RCLONE_CONFIG_B64`** or **`RCLONE_CONFIG`** — Google Drive rclone config (see below).
+   - Optional **`RCLONE_REMOTE`**: default `gdrive:`.
+   - Optional **`UPLOADS_DIR`**: if you mount `mafaza-volume` on this service at e.g. `/uploads`, set `UPLOADS_DIR=/uploads` to copy every file on disk (in addition to DB-linked paths).
+3. **Cron** — `railway.toml` sets **daily 03:00 UTC** (`0 3 * * *`). Remove duplicate schedule under Settings → Cron if both are set.
+4. Deploy → **Logs** should end with `backup.sh: done`. Check Drive for `.sql.gz` and `mafaza-uploads/latest/`.
 
-     ```powershell
-     [Convert]::ToBase64String(
-       [IO.File]::ReadAllBytes("$env:APPDATA\rclone\rclone.conf")
-     ) | Set-Clipboard
-     ```
+### Refresh rclone (Google Drive token)
 
-   - Optional **`RCLONE_REMOTE`**: default `gdrive:` (must match the remote name inside `rclone.conf`).
-3. **Cron**: defined in `railway.toml` (`cronSchedule`) or set **Settings → Cron Schedule** in Railway (UTC). Remove duplicate if both are set.
-4. Deploy and check **Logs** for `backup.sh: done`. Confirm the `.sql.gz` in your Drive folder.
+If uploads stop with auth errors, on your PC:
 
-If **`RCLONE_CONFIG_B64`** is awkward, paste the full file into **`RCLONE_CONFIG`** instead (multiline).
+```powershell
+rclone config reconnect gdrive:
+```
+
+Then update **`RCLONE_CONFIG`** on Railway from `%APPDATA%\rclone\rclone.conf`, or base64:
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("$env:APPDATA\rclone\rclone.conf")) | Set-Clipboard
+```
+
+Paste into **`RCLONE_CONFIG_B64`** and redeploy.
 
 ## `pg_dump` / SSL
 
-If the dump fails with SSL errors, append **`?sslmode=require`** to `DATABASE_URL` in Railway (Postgres plugin dependent).
+If the dump fails with SSL errors, append **`?sslmode=require`** to `DATABASE_URL`.
+
+## Restore (reminder)
+
+- **DB**: `gunzip -c mafaza-db-....sql.gz | psql "$DATABASE_PUBLIC_URL"`
+- **Images**: restore files from `mafaza-uploads/latest/` into `mafaza` volume `/usr/src/app/public/uploads/` (or re-fetch paths already in DB)
