@@ -50,9 +50,12 @@ rclone --config "$RCLONE_CFG" copy "$DUMP" "$REMOTE" \
 rm -f "$DUMP"
 
 backup_uploads() {
+  set +e
   local uploads_tmp="/tmp/mafaza-uploads-${STAMP}"
+  local paths_file="/tmp/mafaza-upload-paths.txt"
   mkdir -p "$uploads_tmp"
   local fetched=0
+  local upload_errors=0
 
   if [[ -n "${UPLOADS_DIR:-}" && -d "${UPLOADS_DIR}" ]]; then
     echo "backup.sh: mirroring UPLOADS_DIR=${UPLOADS_DIR}"
@@ -67,36 +70,49 @@ backup_uploads() {
 
   local app_url="${APP_URL:-}"
   app_url="${app_url#APP_URL=}"
+  app_url="${app_url#"${app_url%%[![:space:]]*}"}"
+  app_url="${app_url%"${app_url##*[![:space:]]}"}"
   app_url="${app_url%/}"
 
   if [[ -n "$app_url" ]]; then
-    echo "backup.sh: fetching /uploads files from ${app_url}"
-    while IFS= read -r path; do
-      [[ -z "$path" ]] && continue
-      [[ "$path" != /* ]] && path="/${path}"
-      local base
-      base="$(basename "$path")"
-      local dest="${uploads_tmp}/${base}"
-      if [[ -f "$dest" ]]; then
-        continue
-      fi
-      if curl -fsSL --max-time 120 -o "$dest" "${app_url}${path}"; then
-        fetched=$((fetched + 1))
-        echo "backup.sh: saved ${base}"
+    if ! command -v curl >/dev/null 2>&1; then
+      echo "backup.sh: warning: curl not installed; skipping HTTP upload fetch (rebuild image)" >&2
+    else
+      echo "backup.sh: fetching /uploads files from ${app_url}"
+      psql "$DATABASE_URL" -t -A -c "
+        SELECT DISTINCT path FROM (
+          SELECT link AS path FROM \"ProjectImages\" WHERE link IS NOT NULL AND trim(link) <> ''
+          UNION
+          SELECT receipt AS path FROM \"Transactions\" WHERE receipt IS NOT NULL AND trim(receipt) <> ''
+          UNION
+          SELECT \"adminReceipt\" AS path FROM \"Transactions\" WHERE \"adminReceipt\" IS NOT NULL AND trim(\"adminReceipt\") <> ''
+          UNION
+          SELECT avatar AS path FROM \"Users\" WHERE avatar IS NOT NULL AND trim(avatar) <> ''
+        ) t;
+      " >"$paths_file" 2>/dev/null
+      if [[ ! -s "$paths_file" ]]; then
+        echo "backup.sh: warning: no upload paths from database (empty or query failed)" >&2
       else
-        echo "backup.sh: warning: failed to fetch ${app_url}${path}" >&2
+        while IFS= read -r path; do
+          [[ -z "$path" ]] && continue
+          [[ "$path" != /* ]] && path="/${path}"
+          local base
+          base="$(basename "$path")"
+          local dest="${uploads_tmp}/${base}"
+          if [[ -f "$dest" ]]; then
+            continue
+          fi
+          if curl -fsSL --max-time 120 -o "$dest" "${app_url}${path}"; then
+            fetched=$((fetched + 1))
+            echo "backup.sh: saved ${base}"
+          else
+            upload_errors=$((upload_errors + 1))
+            echo "backup.sh: warning: failed to fetch ${app_url}${path}" >&2
+          fi
+        done <"$paths_file"
       fi
-    done < <(psql "$DATABASE_URL" -t -A -c "
-      SELECT DISTINCT path FROM (
-        SELECT link AS path FROM \"ProjectImages\" WHERE link IS NOT NULL AND trim(link) <> ''
-        UNION
-        SELECT receipt AS path FROM \"Transactions\" WHERE receipt IS NOT NULL AND trim(receipt) <> ''
-        UNION
-        SELECT \"adminReceipt\" AS path FROM \"Transactions\" WHERE \"adminReceipt\" IS NOT NULL AND trim(\"adminReceipt\") <> ''
-        UNION
-        SELECT avatar AS path FROM \"Users\" WHERE avatar IS NOT NULL AND trim(avatar) <> ''
-      ) t;
-    ")
+      rm -f "$paths_file"
+    fi
   else
     echo "backup.sh: APP_URL not set; skipping HTTP upload fetch (set APP_URL=https://app.mafazainvestment.com)" >&2
   fi
@@ -104,18 +120,28 @@ backup_uploads() {
   if [[ "$fetched" -eq 0 ]]; then
     echo "backup.sh: no upload files collected"
     rm -rf "$uploads_tmp"
+    set -e
     return 0
   fi
 
   local remote_dated="${REMOTE}mafaza-uploads/${STAMP}/"
   local remote_latest="${REMOTE}mafaza-uploads/latest/"
   echo "backup.sh: rclone copy ${fetched} file(s) -> ${remote_dated}"
-  rclone --config "$RCLONE_CFG" copy "$uploads_tmp" "$remote_dated" \
-    --transfers 2 --checkers 4 --retries 5 --low-level-retries 10 -v
+  if ! rclone --config "$RCLONE_CFG" copy "$uploads_tmp" "$remote_dated" \
+    --transfers 2 --checkers 4 --retries 5 --low-level-retries 10 -v; then
+    upload_errors=$((upload_errors + 1))
+  fi
   echo "backup.sh: rclone copy uploads -> ${remote_latest}"
-  rclone --config "$RCLONE_CFG" copy "$uploads_tmp" "$remote_latest" \
-    --transfers 2 --checkers 4 --retries 5 --low-level-retries 10 -v
+  if ! rclone --config "$RCLONE_CFG" copy "$uploads_tmp" "$remote_latest" \
+    --transfers 2 --checkers 4 --retries 5 --low-level-retries 10 -v; then
+    upload_errors=$((upload_errors + 1))
+  fi
   rm -rf "$uploads_tmp"
+  set -e
+  if [[ "$upload_errors" -gt 0 ]]; then
+    echo "backup.sh: uploads phase completed with ${upload_errors} warning(s)" >&2
+  fi
+  return 0
 }
 
 backup_uploads
